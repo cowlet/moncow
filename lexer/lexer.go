@@ -3,44 +3,50 @@ package lexer
 import (
 	"fmt"
 	"github.com/cowlet/moncow/token"
+	"unicode"
+	"unicode/utf8"
 )
 
 var _ = fmt.Printf // TODO: delete when done
 
 type Lexer struct {
 	input        string
-	position     int  // current position in input (current char)
-	readPosition int  // current reading position in input (after current char)
-	ch           byte // current char under examination
+	position     int  // current position in input (current rune start)
+	readPosition int  // current reading position in input (after current rune)
+	ch           rune // current char under examination
 }
 
 func New(input string) *Lexer {
 	l := &Lexer{input: input}
-	l.readChar() // initialize the character pointers
+	l.readRune() // initialize the character pointers
 	return l
 }
 
-func (l *Lexer) readChar() {
+func (l *Lexer) readRune() {
 	if l.readPosition >= len(l.input) {
 		l.ch = 0
+		l.position = l.readPosition
+		l.readPosition += 1
 	} else {
-		l.ch = l.input[l.readPosition]
+		runeValue, width := utf8.DecodeRuneInString(l.input[l.readPosition:])
+		l.ch = runeValue
+		l.position = l.readPosition
+		l.readPosition += width
 	}
-	l.position = l.readPosition
-	l.readPosition += 1
 }
 
-func (l *Lexer) peekChar() byte {
+func (l *Lexer) peekRune() rune {
 	if l.readPosition >= len(l.input) {
 		return 0
 	}
-	return l.input[l.readPosition]
+	runeValue, _ := utf8.DecodeRuneInString(l.input[l.readPosition:])
+	return runeValue
 }
 
 func (l *Lexer) readIdentifier() string {
 	startPos := l.position
 	for isLetter(l.ch) {
-		l.readChar()
+		l.readRune()
 	}
 	return l.input[startPos:l.position]
 }
@@ -48,26 +54,26 @@ func (l *Lexer) readIdentifier() string {
 func (l *Lexer) readNumber() string {
 	startPos := l.position
 	for isDigit(l.ch) {
-		l.readChar()
+		l.readRune()
 	}
 	return l.input[startPos:l.position]
 }
 
 func (l *Lexer) skipWhitespace() {
-	for l.ch == ' ' || l.ch == '\t' || l.ch == '\n' || l.ch == '\r' {
-		l.readChar()
+	for unicode.Is(unicode.White_Space, l.ch) {
+		l.readRune()
 	}
 }
 
-func isLetter(ch byte) bool {
-	return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_'
+func isLetter(ch rune) bool {
+	return unicode.In(ch, unicode.Letter, unicode.Symbol) || ch == '_'
 }
 
-func isDigit(ch byte) bool {
-	return '0' <= ch && ch <= '9'
+func isDigit(ch rune) bool {
+	return unicode.In(ch, unicode.Number)
 }
 
-func newToken(tokenType token.TokenType, ch byte) token.Token {
+func newToken(tokenType token.TokenType, ch rune) token.Token {
 	return token.Token{Type: tokenType, Literal: string(ch)}
 }
 
@@ -75,24 +81,25 @@ func (l *Lexer) NextToken() token.Token {
 	var tok token.Token
 
 	l.skipWhitespace()
+	//fmt.Printf("Inspecting rune %#U\n", l.ch)
 
 	switch l.ch {
 	case '=':
-		if l.peekChar() == '=' {
-			l.readChar() // consume one here, the other below
+		if l.peekRune() == '=' {
+			l.readRune() // consume one here, the other below
 			tok = token.Token{Type: token.EQ, Literal: "=="}
 		} else {
 			tok = newToken(token.ASSIGN, l.ch)
 		}
 	case '!':
-		if l.peekChar() == '=' {
-			l.readChar() // consume one here, the other below
+		if l.peekRune() == '=' {
+			l.readRune() // consume one here, the other below
 			tok = token.Token{Type: token.NEQ, Literal: "!="}
 		} else {
 			tok = newToken(token.BANG, l.ch)
 		}
 	case ';':
-		tok = newToken(token.SEMICOLON, l.ch)
+		tok = newToken(token.SEMI, l.ch)
 	case '(':
 		tok = newToken(token.LPAREN, l.ch)
 	case ')':
@@ -131,6 +138,6 @@ func (l *Lexer) NextToken() token.Token {
 		}
 	}
 
-	l.readChar()
+	l.readRune()
 	return tok
 }

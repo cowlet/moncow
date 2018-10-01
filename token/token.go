@@ -31,8 +31,8 @@ const (
 	NEQ = "!="
 
 	// Delimiters
-	COMMA     = ","
-	SEMICOLON = ";"
+	COMMA = ","
+	SEMI  = ";"
 
 	LPAREN = "("
 	RPAREN = ")"
@@ -40,18 +40,18 @@ const (
 	RBRACE = "}"
 
 	// Keywords
-	LET      = "LET"
-	FUNCTION = "FUNCTION"
-	RETURN   = "RETURN"
-	IF       = "IF"
-	ELSE     = "ELSE"
-	TRUE     = "TRUE"
-	FALSE    = "FALSE"
+	LET    = "LET"
+	FUNC   = "FUNC"
+	RETURN = "RETURN"
+	IF     = "IF"
+	ELSE   = "ELSE"
+	TRUE   = "TRUE"
+	FALSE  = "FALSE"
 )
 
 var keywords = map[string]TokenType{
 	"let":    LET,
-	"fn":     FUNCTION,
+	"fn":     FUNC,
 	"return": RETURN,
 	"if":     IF,
 	"else":   ELSE,

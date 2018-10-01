@@ -12,7 +12,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("Hello %s! This is MonCow, a language derived from Monkey :)\n",
+	fmt.Printf("Hello %s! This is MonCow, a language derived from Monkey 🐵🐮\n",
 		user.Username)
 	repl.Start(os.Stdin, os.Stdout)
 }
