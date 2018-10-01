@@ -9,6 +9,7 @@ func TestNextToken(t *testing.T) {
 	input := `let five = 5;
 let ten = 10;
 let horse🐴 = 3;
+let two = 2.0;
 
 let add = fn(x, y) {
   x + y;
@@ -46,6 +47,11 @@ if (5 < 10) {
 		{token.IDENT, "horse🐴"},
 		{token.ASSIGN, "="},
 		{token.INT, "3"},
+		{token.SEMI, ";"},
+		{token.LET, "let"},
+		{token.IDENT, "two"},
+		{token.ASSIGN, "="},
+		{token.FLOAT, "2.0"},
 		{token.SEMI, ";"},
 		{token.LET, "let"},
 		{token.IDENT, "add"},

@@ -51,12 +51,22 @@ func (l *Lexer) readIdentifier() string {
 	return l.input[startPos:l.position]
 }
 
-func (l *Lexer) readNumber() string {
+func (l *Lexer) readFloat() (string, bool) {
 	startPos := l.position
 	for isDigit(l.ch) {
 		l.readRune()
 	}
-	return l.input[startPos:l.position]
+	if l.ch != '.' {
+		// if there's no period, it's not a float
+		// but return what we've read to this point
+		return l.input[startPos:l.position], false
+	}
+
+	l.readRune() // read the period
+	for isDigit(l.ch) {
+		l.readRune() // read the digits after the period
+	}
+	return l.input[startPos:l.position], true
 }
 
 func (l *Lexer) skipWhitespace() {
@@ -131,7 +141,12 @@ func (l *Lexer) NextToken() token.Token {
 			tok.Type = token.LookupIdent(tok.Literal)
 			return tok
 		} else if isDigit(l.ch) {
-			tok = token.Token{Type: token.INT, Literal: l.readNumber()}
+			val, ok := l.readFloat()
+			if ok {
+				tok = token.Token{Type: token.FLOAT, Literal: val}
+			} else {
+				tok = token.Token{Type: token.INT, Literal: val}
+			}
 			return tok
 		} else {
 			tok = newToken(token.ILLEGAL, l.ch)

@@ -14,6 +14,7 @@ const (
 	// Identifiers and literals
 	IDENT = "IDENT" // add, x, y, etc
 	INT   = "INT"   // integers
+	FLOAT = "FLOAT" // floating point numbers
 
 	// Operators
 	ASSIGN = "="
