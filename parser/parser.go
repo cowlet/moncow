@@ -74,6 +74,21 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 	return &ast.LetStatement{Token: let, Name: name} // skip Value
 }
 
+func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
+	/* Expect RETURN, <expression>, SEMI */
+	ret, ok := p.validateToken(token.RETURN)
+	if !ok {
+		return nil
+	}
+
+	/* TODO: revisit */
+	for p.currentToken.Type != token.SEMI {
+		p.nextToken()
+	}
+	//expression := p.parseExpression()
+	return &ast.ReturnStatement{Token: ret} // skip Value
+}
+
 func (p *Parser) parseIdentifier() *ast.Identifier {
 	name, ok := p.validateToken(token.IDENT)
 	if !ok {
@@ -87,6 +102,8 @@ func (p *Parser) parseStatement() ast.Statement {
 	switch p.currentToken.Type {
 	case token.LET:
 		return p.parseLetStatement()
+	case token.RETURN:
+		return p.parseReturnStatement()
 	default:
 		return nil
 	}

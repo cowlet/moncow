@@ -6,6 +6,19 @@ import (
 	"testing"
 )
 
+func checkParserErrors(t *testing.T, p *Parser) {
+	errors := p.Errors()
+	if len(errors) == 0 {
+		return
+	}
+
+	t.Errorf("parser has %d errors", len(errors))
+	for _, msg := range errors {
+		t.Errorf("parser error: %q", msg)
+	}
+	t.FailNow()
+}
+
 func TestLetStatements(t *testing.T) {
 	input := `
 let x = 5;
@@ -19,9 +32,6 @@ let moo = 12345;
 	program := p.ParseProgram()
 	checkParserErrors(t, p)
 
-	if program == nil {
-		t.Fatalf("ParseProgram() returned nil")
-	}
 	if len(program.Statements) != 3 {
 		t.Fatalf("program.Statements doesn't contain 3 (got %d)", len(program.Statements))
 	}
@@ -42,19 +52,6 @@ let moo = 12345;
 	}
 }
 
-func checkParserErrors(t *testing.T, p *Parser) {
-	errors := p.Errors()
-	if len(errors) == 0 {
-		return
-	}
-
-	t.Errorf("parser has %d errors", len(errors))
-	for _, msg := range errors {
-		t.Errorf("parser error: %q", msg)
-	}
-	t.FailNow()
-}
-
 func testLetStatement(t *testing.T, s ast.Statement, name string) bool {
 	if s.TokenLiteral() != "let" {
 		t.Errorf("s.TokenLiteral() not 'let'. Got '%q'", s.TokenLiteral())
@@ -63,7 +60,7 @@ func testLetStatement(t *testing.T, s ast.Statement, name string) bool {
 
 	letStmt, ok := s.(*ast.LetStatement)
 	if !ok {
-		t.Errorf("s not *ast.LetStatement. Got %T", s)
+		t.Errorf("statement not *ast.LetStatement. Got %T", s)
 		return false
 	}
 
@@ -78,4 +75,31 @@ func testLetStatement(t *testing.T, s ast.Statement, name string) bool {
 	}
 
 	return true
+}
+
+func TestReturnStatements(t *testing.T) {
+	input := `
+return 5;
+return 10.5;
+return 12345;
+`
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	if len(program.Statements) != 3 {
+		t.Fatalf("program.Statements doesn't contain 3 (got %d)", len(program.Statements))
+	}
+
+	for _, stmt := range program.Statements {
+		retStmt, ok := stmt.(*ast.ReturnStatement)
+		if !ok {
+			t.Errorf("statement not *ast.ReturnStatement. Got %T", retStmt)
+			continue
+		}
+		if stmt.TokenLiteral() != "return" {
+			t.Errorf("stmt.TokenLiteral not 'return', got %q", stmt.TokenLiteral())
+		}
+	}
 }
