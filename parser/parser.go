@@ -40,20 +40,31 @@ func (p *Parser) tokenError(t token.TokenType) {
 	p.errors = append(p.errors, msg)
 }
 
-func (p *Parser) validateToken(t token.TokenType) token.Token {
+func (p *Parser) validateToken(t token.TokenType) (token.Token, bool) {
 	tok := p.currentToken
+	ok := true
 	if p.currentToken.Type != t {
 		p.tokenError(t)
+		ok = false
 	}
 	p.nextToken()
-	return tok
+	return tok, ok
 }
 
 func (p *Parser) parseLetStatement() *ast.LetStatement {
 	/* Expect LET, IDENT, ASSIGN, <expression>, SEMI */
-	let := p.validateToken(token.LET)
+	let, ok := p.validateToken(token.LET)
+	if !ok {
+		return nil
+	}
 	name := p.parseIdentifier()
-	p.validateToken(token.ASSIGN)
+	if name == nil {
+		return nil
+	}
+	_, ok = p.validateToken(token.ASSIGN)
+	if !ok {
+		return nil
+	}
 
 	/* TODO: revisit */
 	for p.currentToken.Type != token.SEMI {
@@ -64,9 +75,11 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 }
 
 func (p *Parser) parseIdentifier() *ast.Identifier {
-	name := p.validateToken(token.IDENT)
-	ident := &ast.Identifier{Token: name, Value: name.Literal}
-	return ident
+	name, ok := p.validateToken(token.IDENT)
+	if !ok {
+		return nil
+	}
+	return &ast.Identifier{Token: name, Value: name.Literal}
 }
 
 func (p *Parser) parseStatement() ast.Statement {
