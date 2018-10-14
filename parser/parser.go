@@ -5,6 +5,7 @@ import (
 	"github.com/cowlet/moncow/ast"
 	"github.com/cowlet/moncow/lexer"
 	"github.com/cowlet/moncow/token"
+	"strconv"
 )
 
 const (
@@ -45,6 +46,8 @@ func New(l *lexer.Lexer) *Parser {
 	/* Set up operator functions */
 	p.prefixParseFns = map[token.TokenType]prefixParseFn{
 		token.IDENT: p.parseIdentifier,
+		token.INT:   p.parseIntegerLiteral,
+		token.FLOAT: p.parseFloatLiteral,
 	}
 
 	return p
@@ -138,6 +141,32 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 
 func (p *Parser) parseIdentifier() ast.Expression {
 	return &ast.Identifier{Token: p.currentToken, Value: p.currentToken.Literal}
+}
+
+func (p *Parser) parseIntegerLiteral() ast.Expression {
+	lit := &ast.IntegerLiteral{Token: p.currentToken}
+
+	value, err := strconv.ParseInt(p.currentToken.Literal, 0, 64)
+	if err != nil {
+		msg := fmt.Sprintf("Could not parse %q as integer", p.currentToken.Literal)
+		p.errors = append(p.errors, msg)
+		return nil
+	}
+	lit.Value = value
+	return lit
+}
+
+func (p *Parser) parseFloatLiteral() ast.Expression {
+	lit := &ast.FloatLiteral{Token: p.currentToken}
+
+	value, err := strconv.ParseFloat(p.currentToken.Literal, 64)
+	if err != nil {
+		msg := fmt.Sprintf("Could not parse %q as float", p.currentToken.Literal)
+		p.errors = append(p.errors, msg)
+		return nil
+	}
+	lit.Value = value
+	return lit
 }
 
 func (p *Parser) parseStatement() ast.Statement {

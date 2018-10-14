@@ -132,3 +132,52 @@ func TestIdentifierExpression(t *testing.T) {
 		t.Errorf("ident.TokenLiteral not %s. Got %s", "moo", ident.TokenLiteral())
 	}
 }
+
+func TestNumericLiteralExpressions(t *testing.T) {
+	input := `
+5;
+10.5;
+`
+
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	if len(program.Statements) != 2 {
+		t.Fatalf("program.Statements doesn't contain 2 (got %d)", len(program.Statements))
+	}
+
+	/* Integer */
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("statement not ast.ExpressionStatement. Got %T", program.Statements[0])
+	}
+
+	intLit, ok := stmt.Expression.(*ast.IntegerLiteral)
+	if !ok {
+		t.Fatalf("exp not *ast.IntegerLiteral. Got %T", stmt.Expression)
+	}
+	if intLit.Value != 5 {
+		t.Errorf("intLit.Value not 5. Got %v", intLit.Value)
+	}
+	if intLit.TokenLiteral() != "5" {
+		t.Errorf("intLit.TokenLiteral not '5'. Got %s", intLit.TokenLiteral())
+	}
+	/* Float */
+	stmt, ok = program.Statements[1].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("statement not ast.ExpressionStatement. Got %T", program.Statements[0])
+	}
+
+	lit, ok := stmt.Expression.(*ast.FloatLiteral)
+	if !ok {
+		t.Fatalf("exp not *ast.FloatLiteral. Got %T", stmt.Expression)
+	}
+	if lit.Value != 10.5 {
+		t.Errorf("lit.Value not 10.5. Got %v", lit.Value)
+	}
+	if lit.TokenLiteral() != "10.5" {
+		t.Errorf("lit.TokenLiteral not '10.5'. Got %s", lit.TokenLiteral())
+	}
+}
