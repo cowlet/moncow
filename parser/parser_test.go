@@ -103,3 +103,32 @@ return 12345;
 		}
 	}
 }
+
+func TestIdentifierExpression(t *testing.T) {
+	input := "moo;"
+
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	if len(program.Statements) != 1 {
+		t.Fatalf("program.Statements doesn't contain 1 (got %d)", len(program.Statements))
+	}
+
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("statement not ast.ExpressionStatement. Got %T", program.Statements[0])
+	}
+
+	ident, ok := stmt.Expression.(*ast.Identifier)
+	if !ok {
+		t.Fatalf("exp not *ast.Identifier. Got %T", stmt.Expression)
+	}
+	if ident.Value != "moo" {
+		t.Errorf("ident.Value not %s. Got %s", "moo", ident.Value)
+	}
+	if ident.TokenLiteral() != "moo" {
+		t.Errorf("ident.TokenLiteral not %s. Got %s", "moo", ident.TokenLiteral())
+	}
+}

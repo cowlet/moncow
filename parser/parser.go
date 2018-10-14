@@ -7,11 +7,30 @@ import (
 	"github.com/cowlet/moncow/token"
 )
 
+const (
+	_ int = iota
+	LOWEST
+	EQUALS      // ==
+	LESSGREATER // >, <
+	SUM         // +, -
+	PRODUCT     // *, /
+	PREFIX      // -x, !x
+	CALL        // fn(x)
+)
+
+type (
+	prefixParseFn func() ast.Expression
+	infixParseFn  func(ast.Expression) ast.Expression
+)
+
 type Parser struct {
 	l            *lexer.Lexer
 	currentToken token.Token
 	peekToken    token.Token
 	errors       []string
+
+	prefixParseFns map[token.TokenType]prefixParseFn
+	infixParseFns  map[token.TokenType]infixParseFn
 }
 
 func New(l *lexer.Lexer) *Parser {
@@ -22,6 +41,12 @@ func New(l *lexer.Lexer) *Parser {
 	/* Read two tokens into current and peek */
 	p.nextToken()
 	p.nextToken()
+
+	/* Set up operator functions */
+	p.prefixParseFns = map[token.TokenType]prefixParseFn{
+		token.IDENT: p.parseIdentifier,
+	}
+
 	return p
 }
 
@@ -57,10 +82,11 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 	if !ok {
 		return nil
 	}
-	name := p.parseIdentifier()
-	if name == nil {
+	name, ok := p.validateToken(token.IDENT)
+	if !ok {
 		return nil
 	}
+	ident := &ast.Identifier{Token: name, Value: name.Literal}
 	_, ok = p.validateToken(token.ASSIGN)
 	if !ok {
 		return nil
@@ -71,7 +97,7 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 		p.nextToken()
 	}
 	//expression := p.parseExpression()
-	return &ast.LetStatement{Token: let, Name: name} // skip Value
+	return &ast.LetStatement{Token: let, Name: ident} // skip Value
 }
 
 func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
@@ -89,12 +115,29 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	return &ast.ReturnStatement{Token: ret} // skip Value
 }
 
-func (p *Parser) parseIdentifier() *ast.Identifier {
-	name, ok := p.validateToken(token.IDENT)
-	if !ok {
+func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
+	stmt := &ast.ExpressionStatement{Token: p.currentToken}
+	stmt.Expression = p.parseExpression(LOWEST)
+
+	if p.peekToken.Type == token.SEMI {
+		p.nextToken()
+	}
+
+	return stmt
+}
+
+func (p *Parser) parseExpression(precedence int) ast.Expression {
+	prefix := p.prefixParseFns[p.currentToken.Type]
+	if prefix == nil {
 		return nil
 	}
-	return &ast.Identifier{Token: name, Value: name.Literal}
+	leftExp := prefix()
+
+	return leftExp
+}
+
+func (p *Parser) parseIdentifier() ast.Expression {
+	return &ast.Identifier{Token: p.currentToken, Value: p.currentToken.Literal}
 }
 
 func (p *Parser) parseStatement() ast.Statement {
@@ -105,7 +148,7 @@ func (p *Parser) parseStatement() ast.Statement {
 	case token.RETURN:
 		return p.parseReturnStatement()
 	default:
-		return nil
+		return p.parseExpressionStatement()
 	}
 }
 
@@ -117,7 +160,7 @@ func (p *Parser) ParseProgram() *ast.Program {
 		statement := p.parseStatement()
 
 		if statement != nil {
-			fmt.Printf("Parsed statement '%q'\n", statement.String())
+			fmt.Printf("Parsed statement %q\n", statement.String())
 			program.Statements = append(program.Statements, statement)
 		}
 		p.nextToken()
