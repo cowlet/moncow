@@ -117,7 +117,7 @@ func (p *Parser) ParseProgram() *ast.Program {
 		statement := p.parseStatement()
 
 		if statement != nil {
-			fmt.Printf("Parsed statement %#v\n", statement)
+			fmt.Printf("Parsed statement '%q'\n", statement.String())
 			program.Statements = append(program.Statements, statement)
 		}
 		p.nextToken()
