@@ -19,22 +19,27 @@ func checkParserErrors(t *testing.T, p *Parser) {
 	t.FailNow()
 }
 
-func TestLetStatements(t *testing.T) {
-	input := `
-let x = 5;
-let y = 10.3;
-let moo = 12345;
-`
-
+func initParser(t *testing.T, input string, numStatements int) *ast.Program {
 	l := lexer.New(input)
 	p := New(l)
 
 	program := p.ParseProgram()
 	checkParserErrors(t, p)
 
-	if len(program.Statements) != 3 {
-		t.Fatalf("program.Statements doesn't contain 3 (got %d)", len(program.Statements))
+	if len(program.Statements) != numStatements {
+		t.Fatalf("program.Statements doesn't contain %d (got %d)", numStatements, len(program.Statements))
 	}
+
+	return program
+}
+
+func TestLetStatements(t *testing.T) {
+	input := `
+let x = 5;
+let y = 10.3;
+let moo = 12345;
+`
+	program := initParser(t, input, 3)
 
 	tests := []struct {
 		expectedIdentifier string
@@ -83,14 +88,7 @@ return 5;
 return 10.5;
 return 12345;
 `
-	l := lexer.New(input)
-	p := New(l)
-	program := p.ParseProgram()
-	checkParserErrors(t, p)
-
-	if len(program.Statements) != 3 {
-		t.Fatalf("program.Statements doesn't contain 3 (got %d)", len(program.Statements))
-	}
+	program := initParser(t, input, 3)
 
 	for _, stmt := range program.Statements {
 		retStmt, ok := stmt.(*ast.ReturnStatement)
@@ -106,15 +104,7 @@ return 12345;
 
 func TestIdentifierExpression(t *testing.T) {
 	input := "moo;"
-
-	l := lexer.New(input)
-	p := New(l)
-	program := p.ParseProgram()
-	checkParserErrors(t, p)
-
-	if len(program.Statements) != 1 {
-		t.Fatalf("program.Statements doesn't contain 1 (got %d)", len(program.Statements))
-	}
+	program := initParser(t, input, 1)
 
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
 	if !ok {
@@ -138,15 +128,7 @@ func TestNumericLiteralExpressions(t *testing.T) {
 5;
 10.5;
 `
-
-	l := lexer.New(input)
-	p := New(l)
-	program := p.ParseProgram()
-	checkParserErrors(t, p)
-
-	if len(program.Statements) != 2 {
-		t.Fatalf("program.Statements doesn't contain 2 (got %d)", len(program.Statements))
-	}
+	program := initParser(t, input, 2)
 
 	/* Integer */
 	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
