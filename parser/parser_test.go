@@ -112,15 +112,9 @@ func TestIdentifierExpression(t *testing.T) {
 		t.Fatalf("statement not ast.ExpressionStatement. Got %T", program.Statements[0])
 	}
 
-	ident, ok := stmt.Expression.(*ast.Identifier)
-	if !ok {
-		t.Fatalf("exp not *ast.Identifier. Got %T", stmt.Expression)
-	}
-	if ident.Value != "moo" {
-		t.Errorf("ident.Value not %s. Got %s", "moo", ident.Value)
-	}
-	if ident.TokenLiteral() != "moo" {
-		t.Errorf("ident.TokenLiteral not %s. Got %s", "moo", ident.TokenLiteral())
+	exp, ok := stmt.Expression.(ast.Expression)
+	if !testIdentifier(t, exp, "moo") {
+		return
 	}
 }
 
@@ -136,9 +130,7 @@ func TestNumericLiteralExpressions(t *testing.T) {
 	if !ok {
 		t.Fatalf("statement not ast.ExpressionStatement. Got %T", program.Statements[0])
 	}
-
-	exp, ok := stmt.Expression.(ast.Expression)
-	if !testIntegerLiteral(t, exp, 5) {
+	if !testIntegerLiteral(t, stmt.Expression, 5) {
 		return
 	}
 
@@ -147,16 +139,8 @@ func TestNumericLiteralExpressions(t *testing.T) {
 	if !ok {
 		t.Fatalf("statement not ast.ExpressionStatement. Got %T", program.Statements[0])
 	}
-
-	lit, ok := stmt.Expression.(*ast.FloatLiteral)
-	if !ok {
-		t.Fatalf("exp not *ast.FloatLiteral. Got %T", stmt.Expression)
-	}
-	if lit.Value != 10.5 {
-		t.Errorf("lit.Value not 10.5. Got %v", lit.Value)
-	}
-	if lit.TokenLiteral() != "10.5" {
-		t.Errorf("lit.TokenLiteral not '10.5'. Got %s", lit.TokenLiteral())
+	if !testFloatLiteral(t, stmt.Expression, 10.5) {
+		return
 	}
 }
 
@@ -209,6 +193,80 @@ func testIntegerLiteral(t *testing.T, il ast.Expression, value int64) bool {
 	return true
 }
 
+func testFloatLiteral(t *testing.T, fl ast.Expression, value float64) bool {
+	flt, ok := fl.(*ast.FloatLiteral)
+	if !ok {
+		t.Errorf("fl not *ast.FloatLiteral. Got %T", fl)
+		return false
+	}
+
+	if flt.Value != value {
+		t.Errorf("flt.Value not %f. Got %f", value, flt.Value)
+		return false
+	}
+	if flt.TokenLiteral() != fmt.Sprintf("%.1f", value) {
+		t.Errorf("flt.TokenLiteral not %f. Got %s", value, flt.TokenLiteral())
+		return false
+	}
+	return true
+}
+
+func testIdentifier(t *testing.T, id ast.Expression, value string) bool {
+	ident, ok := id.(*ast.Identifier)
+	if !ok {
+		t.Errorf("id not *ast.Identifier. Got %T", id)
+		return false
+	}
+
+	if ident.Value != value {
+		t.Errorf("ident.Value not %q. Got %q", value, ident.Value)
+		return false
+	}
+	if ident.TokenLiteral() != value {
+		t.Errorf("ident.TokenLiteral not %s. Got %s", value, ident.TokenLiteral())
+		return false
+	}
+	return true
+}
+
+func testLiteralExpression(
+	t *testing.T, exp ast.Expression, expected interface{}) bool {
+	switch v := expected.(type) {
+	case int:
+		return testIntegerLiteral(t, exp, int64(v))
+	case int64:
+		return testIntegerLiteral(t, exp, v)
+	case float64:
+		return testFloatLiteral(t, exp, v)
+	case string:
+		return testIdentifier(t, exp, v)
+	}
+	t.Errorf("type %T not handled", exp)
+	return false
+}
+
+func testInfixExpression(
+	t *testing.T, exp ast.Expression, left interface{},
+	operator string, right interface{}) bool {
+	opExp, ok := exp.(*ast.InfixExpression)
+	if !ok {
+		t.Errorf("exp not *ast.InfixExpression. Got %T", exp)
+		return false
+	}
+
+	if !testLiteralExpression(t, opExp.Left, left) {
+		return false
+	}
+	if opExp.Operator != operator {
+		t.Errorf("exp.Operator not '%q'. Got '%q'", operator, opExp.Operator)
+		return false
+	}
+	if !testLiteralExpression(t, opExp.Right, right) {
+		return false
+	}
+	return true
+}
+
 func TestParsingInfixExpressions(t *testing.T) {
 	infixTests := []struct {
 		input      string
@@ -234,17 +292,8 @@ func TestParsingInfixExpressions(t *testing.T) {
 			t.Fatalf("statement not ast.ExpressionStatement. Got %T", program.Statements[0])
 		}
 
-		exp, ok := stmt.Expression.(*ast.InfixExpression)
-		if !ok {
-			t.Fatalf("exp not *ast.InfixExpression. Got %T", stmt.Expression)
-		}
-		if !testIntegerLiteral(t, exp.Left, tt.leftValue) {
-			return
-		}
-		if exp.Operator != tt.operator {
-			t.Errorf("exp.Operator not %q. Got %v", tt.operator, exp.Operator)
-		}
-		if !testIntegerLiteral(t, exp.Right, tt.rightValue) {
+		if !testInfixExpression(t, stmt.Expression,
+			tt.leftValue, tt.operator, tt.rightValue) {
 			return
 		}
 	}
