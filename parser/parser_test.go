@@ -144,37 +144,7 @@ func TestNumericLiteralExpressions(t *testing.T) {
 	}
 }
 
-func TestParsingPrefixExpressions(t *testing.T) {
-	prefixTests := []struct {
-		input        string
-		operator     string
-		integerValue int64
-	}{
-		{"!5;", "!", 5},
-		{"-15;", "-", 15},
-	}
-
-	for _, tt := range prefixTests {
-		program := initParser(t, tt.input, 1) // 1 statement
-
-		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-		if !ok {
-			t.Fatalf("statement not ast.ExpressionStatement. Got %T", program.Statements[0])
-		}
-
-		exp, ok := stmt.Expression.(*ast.PrefixExpression)
-		if !ok {
-			t.Fatalf("exp not *ast.PrefixExpression. Got %T", stmt.Expression)
-		}
-		if exp.Operator != tt.operator {
-			t.Errorf("exp.Operator not %q. Got %v", tt.operator, exp.Operator)
-		}
-		if !testIntegerLiteral(t, exp.Right, tt.integerValue) {
-			return
-		}
-	}
-}
-
+/* Helper functions for expression parsing */
 func testIntegerLiteral(t *testing.T, il ast.Expression, value int64) bool {
 	integ, ok := il.(*ast.IntegerLiteral)
 	if !ok {
@@ -267,12 +237,47 @@ func testInfixExpression(
 	return true
 }
 
+/* Testing of prefix/infix expressions */
+func TestParsingPrefixExpressions(t *testing.T) {
+	prefixTests := []struct {
+		input    string
+		operator string
+		value    interface{}
+	}{
+		{"!5;", "!", 5},
+		{"-15;", "-", 15},
+		{"-5.0;", "-", 5.0},
+		{"!15.1;", "!", 15.1},
+		{"-moo;", "-", "moo"},
+	}
+
+	for _, tt := range prefixTests {
+		program := initParser(t, tt.input, 1) // 1 statement
+
+		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+		if !ok {
+			t.Fatalf("statement not ast.ExpressionStatement. Got %T", program.Statements[0])
+		}
+
+		exp, ok := stmt.Expression.(*ast.PrefixExpression)
+		if !ok {
+			t.Fatalf("exp not *ast.PrefixExpression. Got %T", stmt.Expression)
+		}
+		if exp.Operator != tt.operator {
+			t.Errorf("exp.Operator not %q. Got %v", tt.operator, exp.Operator)
+		}
+		if !testLiteralExpression(t, exp.Right, tt.value) {
+			return
+		}
+	}
+}
+
 func TestParsingInfixExpressions(t *testing.T) {
 	infixTests := []struct {
 		input      string
-		leftValue  int64
+		leftValue  interface{}
 		operator   string
-		rightValue int64
+		rightValue interface{}
 	}{
 		{"5 + 5;", 5, "+", 5},
 		{"5 - 5;", 5, "-", 5},
@@ -282,6 +287,9 @@ func TestParsingInfixExpressions(t *testing.T) {
 		{"5 < 5;", 5, "<", 5},
 		{"5 == 5;", 5, "==", 5},
 		{"5 != 5;", 5, "!=", 5},
+		{"5.8 + 1.2;", 5.8, "+", 1.2},
+		{"5 + 5.4;", 5, "+", 5.4},
+		{"moo + hoof;", "moo", "+", "hoof"},
 	}
 
 	for _, tt := range infixTests {
