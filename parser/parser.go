@@ -61,6 +61,8 @@ func New(l *lexer.Lexer) *Parser {
 		token.FLOAT: p.parseFloatLiteral,
 		token.BANG:  p.parsePrefixExpression,
 		token.MINUS: p.parsePrefixExpression,
+		token.TRUE:  p.parseBoolean,
+		token.FALSE: p.parseBoolean,
 	}
 
 	p.infixParseFns = map[token.TokenType]infixParseFn{
@@ -201,6 +203,19 @@ func (p *Parser) parseIntegerLiteral() ast.Expression {
 	}
 	lit.Value = value
 	return lit
+}
+
+func (p *Parser) parseBoolean() ast.Expression {
+	b := &ast.Boolean{Token: p.currentToken}
+
+	value, err := strconv.ParseBool(p.currentToken.Literal)
+	if err != nil {
+		msg := fmt.Sprintf("Could not parse %q as Boolean", p.currentToken.Literal)
+		p.errors = append(p.errors, msg)
+		return nil
+	}
+	b.Value = value
+	return b
 }
 
 func (p *Parser) parseFloatLiteral() ast.Expression {

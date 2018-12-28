@@ -118,6 +118,32 @@ func TestIdentifierExpression(t *testing.T) {
 	}
 }
 
+func TestBooleanExpression(t *testing.T) {
+	input := `
+true;
+false;
+`
+	program := initParser(t, input, 2) /* 2 statements */
+
+	tests := []struct {
+		expected bool
+	}{
+		{true},
+		{false},
+	}
+
+	for i, tt := range tests {
+		stmt, ok := program.Statements[i].(*ast.ExpressionStatement)
+		if !ok {
+			t.Errorf("statement not *ast.ExpressionStatement. Got %T", stmt)
+			continue
+		}
+		if !testBoolean(t, stmt.Expression, tt.expected) {
+			return
+		}
+	}
+}
+
 func TestNumericLiteralExpressions(t *testing.T) {
 	input := `
 5;
@@ -199,6 +225,23 @@ func testIdentifier(t *testing.T, id ast.Expression, value string) bool {
 	return true
 }
 
+func testBoolean(t *testing.T, bexp ast.Expression, value bool) bool {
+	b, ok := bexp.(*ast.Boolean)
+	if !ok {
+		t.Errorf("bexp not *ast.Boolean. Got %T", b)
+		return false
+	}
+	if b.TokenLiteral() != fmt.Sprintf("%v", value) {
+		t.Errorf("b.TokenLiteral not '%v', got %q", value, b.TokenLiteral())
+		return false
+	}
+	if b.Value != value {
+		t.Errorf("b.Value not equal to %v, got %v", value, b.Value)
+		return false
+	}
+	return true
+}
+
 func testLiteralExpression(
 	t *testing.T, exp ast.Expression, expected interface{}) bool {
 	switch v := expected.(type) {
@@ -210,6 +253,8 @@ func testLiteralExpression(
 		return testFloatLiteral(t, exp, v)
 	case string:
 		return testIdentifier(t, exp, v)
+	case bool:
+		return testBoolean(t, exp, v)
 	}
 	t.Errorf("type %T not handled", exp)
 	return false
@@ -290,6 +335,7 @@ func TestParsingInfixExpressions(t *testing.T) {
 		{"5.8 + 1.2;", 5.8, "+", 1.2},
 		{"5 + 5.4;", 5, "+", 5.4},
 		{"moo + hoof;", "moo", "+", "hoof"},
+		{"true != false;", true, "!=", false},
 	}
 
 	for _, tt := range infixTests {
@@ -355,6 +401,14 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 		{
 			"3 + 4 * 5 == 3 * 1 + 4 * 5",
 			"((3+(4*5))==((3*1)+(4*5)))",
+		},
+		{
+			"true == false",
+			"(true==false)",
+		},
+		{
+			"a > 5 == false",
+			"((a>5)==false)",
 		},
 	}
 
