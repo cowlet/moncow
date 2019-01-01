@@ -448,6 +448,9 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 }
 
 func testBlock(t *testing.T, blk *ast.BlockStatement, stmts []ast.Statement) bool {
+	if blk == nil && stmts == nil {
+		return true
+	}
 	if len(blk.Statements) != len(stmts) {
 		t.Errorf("Expected %d statements in block, got %d",
 			len(stmts), len(blk.Statements))
@@ -515,28 +518,64 @@ func testBlock(t *testing.T, blk *ast.BlockStatement, stmts []ast.Statement) boo
 }
 
 func TestIfExpression(t *testing.T) {
-	input := "if (x < y) { x }"
-	ifblk := make([]ast.Statement, 1)
-	tok := token.Token{token.IDENT, "x"}
-	ifblk[0] = &ast.ExpressionStatement{tok, &ast.Identifier{tok, "x"}}
+	tokx := token.Token{token.IDENT, "x"}
+	toky := token.Token{token.IDENT, "y"}
+	expx := &ast.ExpressionStatement{tokx, &ast.Identifier{tokx, "x"}}
+	expy := &ast.ExpressionStatement{toky, &ast.Identifier{toky, "y"}}
 
-	program := initParser(t, input, 1) // 1 statement
-	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
-	if !ok {
-		t.Fatalf("statement not ast.ExpressionStatement. Got %T", program.Statements[0])
+	tests := []struct {
+		input     string
+		condition string
+		ifblk     []ast.Statement
+		elseblk   []ast.Statement
+	}{
+		{
+			"if (x < y) { x }",
+			"(x<y)",
+			[]ast.Statement{expx},
+			nil,
+		},
+		{
+			"if (x < y) { x; y; }",
+			"(x<y)",
+			[]ast.Statement{expx, expy},
+			nil,
+		},
+		{
+			"if (x > y) { x } else { y }",
+			"(x>y)",
+			[]ast.Statement{expx},
+			[]ast.Statement{expy},
+		},
 	}
 
-	exp, ok := stmt.Expression.(*ast.IfExpression)
-	if !ok {
-		t.Fatalf("stmt.Expression is not ast.IfExpression. Got %T", stmt.Expression)
-	}
+	for _, tt := range tests {
+		program := initParser(t, tt.input, 1) // 1 statement
+		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+		if !ok {
+			t.Fatalf("statement not ast.ExpressionStatement. Got %T",
+				program.Statements[0])
+		}
 
-	if !testInfixExpression(t, exp.Condition, "x", "<", "y") {
-		return
-	}
+		exp, ok := stmt.Expression.(*ast.IfExpression)
+		if !ok {
+			t.Fatalf("stmt.Expression is not ast.IfExpression. Got %T",
+				stmt.Expression)
+		}
 
-	if !testBlock(t, exp.IfBlock, ifblk) {
-		return
+		if exp.Condition.String() != tt.condition {
+			t.Errorf("exp.Condition not '%q'. Got '%q'",
+				exp.Condition.String(), tt.condition)
+			return
+		}
+
+		if !testBlock(t, exp.IfBlock, tt.ifblk) {
+			return
+		}
+
+		if !testBlock(t, exp.ElseBlock, tt.elseblk) {
+			return
+		}
 	}
 
 }
