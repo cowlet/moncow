@@ -64,6 +64,7 @@ func New(l *lexer.Lexer) *Parser {
 		token.TRUE:   p.parseBoolean,
 		token.FALSE:  p.parseBoolean,
 		token.LPAREN: p.parseGroupedExpression,
+		token.IF:     p.parseIfExpression,
 	}
 
 	p.infixParseFns = map[token.TokenType]infixParseFn{
@@ -193,10 +194,54 @@ func (p *Parser) parseGroupedExpression() ast.Expression {
 	p.nextToken() // consume the LPAREN
 	exp := p.parseExpression(LOWEST)
 	if p.peekToken.Type != token.RPAREN {
+		msg := fmt.Sprintf("Failed to find ')', got %q instead", p.peekToken.Literal)
+		p.errors = append(p.errors, msg)
 		return nil
 	}
-	p.nextToken() // consume the RPAREN
+	p.nextToken() // advance onto the RPAREN
 	return exp
+}
+
+func (p *Parser) parseBlockStatement() *ast.BlockStatement {
+	blk := &ast.BlockStatement{Token: p.currentToken}
+
+	_, ok := p.validateToken(token.LBRACE)
+	if !ok {
+		return nil
+	}
+	for p.currentToken.Type != token.RBRACE {
+		statement := p.parseStatement()
+
+		if statement != nil {
+			blk.Statements = append(blk.Statements, statement)
+		}
+		p.nextToken()
+	}
+	_, ok = p.validateToken(token.RBRACE)
+	if !ok {
+		return nil
+	}
+	return blk
+}
+
+func (p *Parser) parseIfExpression() ast.Expression {
+	tok, ok := p.validateToken(token.IF)
+	if !ok {
+		return nil
+	}
+
+	ie := &ast.IfExpression{Token: tok}
+	ie.Condition = p.parseGroupedExpression() // surrounded by brackets
+	p.nextToken()                             // consume the RPAREN
+	ie.IfBlock = p.parseBlockStatement()
+
+	// Is there an else?
+	if p.currentToken.Type == token.ELSE {
+		p.nextToken() // consume the else
+		ie.ElseBlock = p.parseBlockStatement()
+	}
+
+	return ie
 }
 
 func (p *Parser) parseIdentifier() ast.Expression {

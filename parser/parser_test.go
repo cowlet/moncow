@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/cowlet/moncow/ast"
 	"github.com/cowlet/moncow/lexer"
+	"github.com/cowlet/moncow/token"
 	"testing"
 )
 
@@ -444,4 +445,98 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 	if actual != expected {
 		t.Errorf("expected %q, got %q", expected, actual)
 	}
+}
+
+func testBlock(t *testing.T, blk *ast.BlockStatement, stmts []ast.Statement) bool {
+	if len(blk.Statements) != len(stmts) {
+		t.Errorf("Expected %d statements in block, got %d",
+			len(stmts), len(blk.Statements))
+		return false
+	}
+	for i, stmt := range stmts {
+		switch s := stmt.(type) {
+		case *ast.LetStatement:
+			actual, ok := blk.Statements[i].(*ast.LetStatement)
+			if !ok {
+				t.Errorf("Statement %d expected to be of type %T, got %T",
+					i, s, blk.Statements[i])
+				return false
+			}
+			if actual.Token.Literal != s.Token.Literal {
+				t.Errorf("Expected LetStatement Token to be %s, got %s",
+					s.Token.Literal, actual.Token.Literal)
+				return false
+			}
+			if actual.Name.Value != s.Name.Value {
+				t.Errorf("Expected LetStatement Name to be %s, got %s",
+					s.Name.Value, actual.Name.Value)
+				return false
+			}
+			if actual.Value.String() != s.Value.String() {
+				t.Errorf("Expected LetStatement Value to be %s, got %s",
+					s.Value.String(), actual.Value.String())
+				return false
+			}
+		case *ast.ReturnStatement:
+			actual, ok := blk.Statements[i].(*ast.ReturnStatement)
+			if !ok {
+				t.Errorf("Statement %d expected to be of type %T, got %T",
+					i, s, blk.Statements[i])
+				return false
+			}
+			if actual.Token.Literal != s.Token.Literal {
+				t.Errorf("Expected ReturnStatement Token to be %s, got %s",
+					s.Token.Literal, actual.Token.Literal)
+				return false
+			}
+			if actual.Value.String() != s.Value.String() {
+				t.Errorf("Expected ReturnStatement Value to be %s, got %s",
+					s.Value.String(), actual.Value.String())
+				return false
+			}
+		case *ast.ExpressionStatement:
+			actual, ok := blk.Statements[i].(*ast.ExpressionStatement)
+			if !ok {
+				t.Errorf("Statement %d expected to be of type %T, got %T",
+					i, s, blk.Statements[i])
+				return false
+			}
+			if actual.String() != s.String() {
+				t.Errorf("Expected ExpressionStatement to be %s, got %s",
+					s.String(), actual.String())
+				return false
+			}
+		default:
+			t.Errorf("Unknown type of Statement %T", s)
+			return false
+		}
+	}
+	return true
+}
+
+func TestIfExpression(t *testing.T) {
+	input := "if (x < y) { x }"
+	ifblk := make([]ast.Statement, 1)
+	tok := token.Token{token.IDENT, "x"}
+	ifblk[0] = &ast.ExpressionStatement{tok, &ast.Identifier{tok, "x"}}
+
+	program := initParser(t, input, 1) // 1 statement
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("statement not ast.ExpressionStatement. Got %T", program.Statements[0])
+	}
+
+	exp, ok := stmt.Expression.(*ast.IfExpression)
+	if !ok {
+		t.Fatalf("stmt.Expression is not ast.IfExpression. Got %T", stmt.Expression)
+	}
+
+	if !testInfixExpression(t, exp.Condition, "x", "<", "y") {
+		return
+	}
+
+	if !testBlock(t, exp.IfBlock, ifblk) {
+		return
+	}
+
 }
